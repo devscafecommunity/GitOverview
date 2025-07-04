@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* GitOverview Nightly Theme */
+    --base: #0e1116;
+    --surface: #1a1f29;
+    --surface-hover: #252b38;
+    --accent: #4cc2ff;
+    --accent-alt: #38bdf8;
+    --text-primary: #e0e6ed;
+    --text-muted: #7d8590;
+    --danger: #ff6b81;
+    --success: #4ade80;
+    --warning: #fbbf24;
+    --border: #2c323d;
+    --border-light: #3d4451;
+  }
+}
+
+.bg-base {
+  background-color: var(--base);
+}
+.bg-surface {
+  background-color: var(--surface);
+}
+.bg-surface-hover {
+  background-color: var(--surface-hover);
+}
+.bg-accent {
+  background-color: var(--accent);
+}
+.bg-accent-alt {
+  background-color: var(--accent-alt);
+}
+.bg-danger {
+  background-color: var(--danger);
+}
+.bg-success {
+  background-color: var(--success);
+}
+.bg-warning {
+  background-color: var(--warning);
+}
+
+.text-text-primary {
+  color: var(--text-primary);
+}
+.text-text-muted {
+  color: var(--text-muted);
+}
+.text-accent {
+  color: var(--accent);
+}
+.text-danger {
+  color: var(--danger);
+}
+.text-success {
+  color: var(--success);
+}
+
+.border-border {
+  border-color: var(--border);
+}
+.border-border-light {
+  border-color: var(--border-light);
+}
+
+.hover\:bg-surface-hover:hover {
+  background-color: var(--surface-hover);
+}
+.hover\:bg-accent-alt:hover {
+  background-color: var(--accent-alt);
+}
