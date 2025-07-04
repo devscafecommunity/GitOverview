@@ -1,15 +1,17 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Github, ArrowRight, GitBranch, Users, Activity } from "lucide-react"
+import { Github, ArrowRight, GitBranch, Users, Activity, AlertCircle } from "lucide-react"
 
 export default function Home() {
   const [repoUrl, setRepoUrl] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+
+  // Check if auth is properly configured
+  const isAuthConfigured = process.env.NEXT_PUBLIC_NEXTAUTH_URL || typeof window !== "undefined"
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -31,15 +33,18 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-base flex flex-col">
-      {/* Header */}
-      <header className="border-b border-border p-6">
-        <div className="max-w-6xl mx-auto flex items-center gap-3">
-          <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center">
-            <Github className="w-5 h-5 text-black" />
+      {/* Configuration Warning */}
+      {!isAuthConfigured && (
+        <div className="bg-warning/20 border-b border-warning/30 p-3">
+          <div className="max-w-7xl mx-auto flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-warning" />
+            <p className="text-warning text-sm">
+              <strong>Aviso:</strong> A autenticação não está configurada. Apenas repositórios públicos estarão
+              disponíveis.
+            </p>
           </div>
-          <h1 className="text-2xl font-bold text-text-primary">GitOverview</h1>
         </div>
-      </header>
+      )}
 
       {/* Main Content */}
       <main className="flex-1 flex items-center justify-center p-6">
