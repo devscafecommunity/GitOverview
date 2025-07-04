@@ -8,7 +8,6 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "GitOverview - Visual Git Repository Manager",
   description: "Analyze and manage Git repositories with visual tools and intelligent command generation",
-    generator: 'v0.dev'
 }
 
 export default function RootLayout({
