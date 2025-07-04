@@ -2,6 +2,7 @@
 
 import { useParams } from "next/navigation"
 import { useState, useEffect } from "react"
+import { useSession } from "next-auth/react"
 import RepoHeader from "@/components/RepoHeader"
 import CommitGraph from "@/components/CommitGraph"
 import ContributorsChart from "@/components/ContributorsChart"
@@ -10,14 +11,19 @@ import GitActions from "@/components/GitActions"
 import CommandBox from "@/components/CommandBox"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { getRepository, getCommits, getContributors, getLanguages, processCommitsForChart } from "@/lib/github-api"
+import {
+  getAuthenticatedRepository,
+  getAuthenticatedCommits,
+  getAuthenticatedContributors,
+  getAuthenticatedLanguages,
+} from "@/lib/github-auth-api"
 import type { GitHubRepository, GitHubCommit, GitHubContributor, LanguageStats } from "@/types/github"
-
-// Adicionar import do processador de gráfico Git
 import { processCommitsToGraph } from "@/lib/git-graph-processor"
 import GitGraph from "@/components/GitGraph"
 
 export default function RepoPage() {
   const params = useParams()
+  const { data: session } = useSession()
   const [repoData, setRepoData] = useState<GitHubRepository | null>(null)
   const [commits, setCommits] = useState<GitHubCommit[]>([])
   const [contributors, setContributors] = useState<GitHubContributor[]>([])
@@ -25,8 +31,6 @@ export default function RepoPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [generatedCommand, setGeneratedCommand] = useState("")
-
-  // No useEffect onde buscamos os dados, adicionar processamento do gráfico:
   const [gitGraphData, setGitGraphData] = useState<{
     nodes: any[]
     branches: any[]
@@ -43,22 +47,39 @@ export default function RepoPage() {
         const owner = params.owner as string
         const repo = params.repo as string
 
-        // Buscar dados em paralelo
-        const [repoInfo, commitsData, contributorsData, languagesData] = await Promise.all([
-          getRepository(owner, repo),
-          getCommits(owner, repo, 1, 100),
-          getContributors(owner, repo),
-          getLanguages(owner, repo),
-        ])
+        // Usar API autenticada se o usuário estiver logado
+        if (session?.accessToken) {
+          const [repoInfo, commitsData, contributorsData, languagesData] = await Promise.all([
+            getAuthenticatedRepository(owner, repo, session.accessToken),
+            getAuthenticatedCommits(owner, repo, session.accessToken, 1, 100),
+            getAuthenticatedContributors(owner, repo, session.accessToken),
+            getAuthenticatedLanguages(owner, repo, session.accessToken),
+          ])
 
-        setRepoData(repoInfo)
-        setCommits(commitsData)
-        setContributors(contributorsData)
-        setLanguages(languagesData)
+          setRepoData(repoInfo)
+          setCommits(commitsData)
+          setContributors(contributorsData)
+          setLanguages(languagesData)
 
-        // Dentro do fetchRepoData, após buscar os commits:
-        const graphData = processCommitsToGraph(commitsData)
-        setGitGraphData(graphData)
+          const graphData = processCommitsToGraph(commitsData)
+          setGitGraphData(graphData)
+        } else {
+          // Usar API pública para repositórios públicos
+          const [repoInfo, commitsData, contributorsData, languagesData] = await Promise.all([
+            getRepository(owner, repo),
+            getCommits(owner, repo, 1, 100),
+            getContributors(owner, repo),
+            getLanguages(owner, repo),
+          ])
+
+          setRepoData(repoInfo)
+          setCommits(commitsData)
+          setContributors(contributorsData)
+          setLanguages(languagesData)
+
+          const graphData = processCommitsToGraph(commitsData)
+          setGitGraphData(graphData)
+        }
       } catch (err) {
         console.error("Error fetching repo data:", err)
         setError(err instanceof Error ? err.message : "Erro ao carregar repositório")
@@ -68,7 +89,7 @@ export default function RepoPage() {
     }
 
     fetchRepoData()
-  }, [params.owner, params.repo])
+  }, [params.owner, params.repo, session])
 
   if (loading) {
     return (
@@ -87,6 +108,18 @@ export default function RepoPage() {
         <div className="text-center space-y-4">
           <p className="text-danger text-lg">Erro ao carregar repositório</p>
           <p className="text-text-muted">{error || "Verifique se a URL está correta"}</p>
+          {error?.includes("404") && (
+            <div className="bg-surface border border-border rounded-lg p-4 max-w-md">
+              <p className="text-text-muted text-sm">
+                Este repositório pode ser privado.
+                <br />
+                <a href="/auth/signin" className="text-accent hover:text-accent-alt underline">
+                  Faça login
+                </a>{" "}
+                para acessar seus repositórios privados.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     )
@@ -100,14 +133,13 @@ export default function RepoPage() {
 
       <div className="max-w-7xl mx-auto p-6 space-y-6">
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 bg-surface border border-border">
+          <TabsList className="grid w-full grid-cols-6 bg-surface border border-border">
             <TabsTrigger value="overview">Visão Geral</TabsTrigger>
             <TabsTrigger value="commits">Commits</TabsTrigger>
             <TabsTrigger value="contributors">Colaboradores</TabsTrigger>
             <TabsTrigger value="languages">Linguagens</TabsTrigger>
-            <TabsTrigger value="actions">Ações Git</TabsTrigger>
-            {/* Adicionar nova tab no TabsList: */}
             <TabsTrigger value="git-graph">Histórico Git</TabsTrigger>
+            <TabsTrigger value="actions">Ações Git</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -159,11 +191,6 @@ export default function RepoPage() {
             <LanguagesChart languages={languages} showDetails />
           </TabsContent>
 
-          <TabsContent value="actions" className="space-y-6">
-            <GitActions onCommandGenerated={setGeneratedCommand} />
-          </TabsContent>
-
-          {/* Adicionar novo TabsContent: */}
           <TabsContent value="git-graph" className="space-y-6">
             {gitGraphData && (
               <GitGraph
@@ -174,6 +201,10 @@ export default function RepoPage() {
                 onCommandGenerated={setGeneratedCommand}
               />
             )}
+          </TabsContent>
+
+          <TabsContent value="actions" className="space-y-6">
+            <GitActions onCommandGenerated={setGeneratedCommand} />
           </TabsContent>
         </Tabs>
 
